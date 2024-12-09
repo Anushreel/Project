@@ -1,0 +1,25 @@
+def __jupyter_exec_background__():
+    from IPython.display import display
+    from threading import Thread
+    from traceback import format_exc
+
+    # First send a dummy response to get the display id.
+    # Later we'll send the real response with the actual data.
+    # And that can happen much later even after the execution completes,
+    # as that response will be sent from a bg thread.
+    output = display({"application/vnd.vscode.bg.execution.7": ""}, raw=True, display_id=True)
+
+    def do_implementation():
+        return get_ipython().kernel.do_complete("import pdfplumber\r\nfrom llama_index.core import Document,VectorStoreIndex, ServiceContext\r\nfrom llama_index.core.vector_stores import ChromaVectorStore\r\nfrom llama_index.core.storage.storage_context import StorageContext\r\nimport chromadb\r\nimport os\r\n\r\n# Step 1: Extract text and tables from the PDF using pdfplumber\r\ndef extract_pdf_content(pdf_path):\r\n    text_content = \"\"\r\n    tables = []\r\n\r\n    with pdfplumber.open(pdf_path) as pdf:\r\n        # Extract text from all pages\r\n        for page in pdf.pages:\r\n            text_content += page.extract_text() + \"\\n\"  # Extract text\r\n        \r\n        # Extract tables from each page\r\n        for page in pdf.pages:\r\n            page_tables = page.extract_tables()\r\n            for table in page_tables:\r\n                tables.append(table)\r\n    \r\n    return text_content, tables\r\n\r\n# Step 2: Convert the extracted tables into a string format suitable for LlamaIndex\r\ndef format_tables_as_text(tables):\r\n    table_text = \"\"\r\n    for table in tables:\r\n        for row in table:\r\n            # Handle None values in the table row by replacing with empty string\r\n            row = [str(cell) if cell is not None else \"\" for cell in row]\r\n            table_text += \"\\t\".join(row) + \"\\n\"  # Tab-separated row\r\n        table_text += \"\\n---\\n\"  # Separator between tables (optional)\r\n    return table_text\r\n\r\n# Step 3: Create a ChromaDB client and collection\r\nclient = chromadb.PersistentClient(path=\"./chroma_db\")\r\nchroma_collection = client.get_or_create_collection(\"pdf_documents\")\r\n\r\n# Step 4: Create the vector store using ChromaDB\r\nvector_store = ChromaVectorStore(chroma_collection=chroma_collection)\r\n\r\n# Step 5: Extract text and tables from the PDF\r\npdf_path = \"data/paper.pdf\"\r\ntext_content, tables = extract_pdf_content(pdf_path)\r\n\r\n# Step 6: Format tables into text and combine them with the main text content\r\ntable_text = format_tables_as_text(tables)\r\ncombined_text = text_content + \"\\n\\n\" + \"Tables extracted from the PDF:\\n\" + table_text\r\n\r\n# Step 7: Wrap the combined text into LlamaIndex BaseDocument format\r\ndocuments = [Document(text=combined_text, doc_id=\"pdf_document_1\")]\r\n\r\n# Step 8: Create the storage context with the ChromaVectorStore\r\nstorage_context = StorageContext.from_defaults(vector_store=vector_store)\r\n\r\n# Step 9: Create an index from the documents and store it in ChromaDB\r\nindex = VectorStoreIndex.from_documents(documents, storage_context=storage_context)\r\n\r\n# Optionally save the index to disk\r\nindex.save_to_disk(\"index_path\")\r\n\r\n# Step 10: Query the index for specific data\r\nquery = \"Find tables and content related to financial data\"\r\nresponse = index.query(query)\r\nprint(\"Query Result:\", response)\r\n\r\n# Optionally: You can perform a query on ChromaDB directly if you need more flexibility:\r\nresults = chroma_collection.query(query_texts=[query], n_results=1)\r\nprint(\"ChromaDB Query Result:\", results)\r\n", 113)
+
+    def bg_main():
+        try:
+            output.update({"application/vnd.vscode.bg.execution.7.result": do_implementation()}, raw=True)
+        except Exception as e:
+            output.update({"application/vnd.vscode.bg.execution.7.error": format_exc()}, raw=True)
+
+
+    Thread(target=bg_main, daemon=True).start()
+
+
+__jupyter_exec_background__()

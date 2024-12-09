@@ -1,0 +1,16 @@
+llama-index
+langchain
+pyPDF2
+chromadb
+pandas
+groq
+python-dotenv
+requests
+llama-index-llms-gemini
+llama-index-llms-groq
+lama-index-embeddings-gemini
+lama-index-vector-stores-pinecone
+llama-index-vector-stores-chroma
+langchain-google-genai
+langchain-chroma>=0.1.2
+langchain-groq
